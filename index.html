@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMZ, 미래를 향한 나의 선택</title>
+    <style>
+        body {
+            font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #game-container {
+            background: white;
+            width: 800px;
+            max-width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }
+        #status-bar {
+            display: flex;
+            justify-content: space-between;
+            background: #e9ecef;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .stat-item {
+            background: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        #progress {
+            font-size: 0.9rem;
+            color: #777;
+            margin-bottom: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+        #story-title {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+        }
+        /* 새롭게 추가된 게임 이미지 스타일 */
+        #game-image {
+            width: 100%;
+            max-height: 380px;
+            max-height: 480px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        #story-text {
+            font-size: 1.15rem;
+            line-height: 1.7;
+            margin-bottom: 25px;
+            text-align: left;
+            background: #fafafa;
+            padding: 25px;
+            border-left: 6px solid #4a90e2;
+            border-radius: 8px;
+            word-break: keep-all;
+        }
+        #knowledge-box {
+            font-size: 1rem;
+            color: #555;
+            background: #fff8e1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: left;
+            border: 1px solid #ffe082;
+            line-height: 1.6;
+        }
+        .choice-btn {
+            display: block;
+            width: 100%;
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 18px;
+            margin-bottom: 12px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            line-height: 1.4;
+        }
+        .choice-btn:hover {
+            background: #357abd;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+        .ending-btn {
+            background: #27ae60;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: white;
+        }
+        .ending-btn:hover {
+            background: #2ecc71;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="status-bar">
+        <div class="stat-item">🕊️ 평화: <span id="stat-peace">0</span></div>
+        <div class="stat-item">🌿 생태: <span id="stat-eco">0</span></div>
+        <div class="stat-item">💰 경제: <span id="stat-economy">0</span></div>
+    </div>
+
+    <div id="progress">진행 중</div>
+    <h2 id="story-title">게임을 준비 중입니다...</h2>
+    
+    <img id="game-image" class="hidden" src="" alt="게임 화면">
+    
+    <div id="story-text"></div>
+    <div id="knowledge-box" class="hidden"></div>
+    
+    <div id="choices-container"></div>
+</div>
+
+<script>
+    let stats = {
+        peace: 0,
+        eco: 0,
+        economy: 0
+    };
+    
+    let currentRoundId = "start";
+    let turnCount = 1;
+    let chosenRoute = ""; 
+    const maxTurns = 10;
+
+    const storyData = {
+        "start": {
+            title: "라운드 1. [1950년대] 비무장지대의 탄생",
+            text: "1953년, 한반도의 허리에 248km의 경계선이 그어지며 거대한 비무장지대가 설정되었습니다. 당신은 어떤 배경을 가지고 이 시대를 살아가시겠습니까?",
+            knowledge: "비무장지대(DMZ)는 서로 충돌을 막기 위해 설정된 폭 4km의 완충 지대로, 사람의 발길이 닿지 않아 점차 아름다운 자연의 보고가 되었습니다.",
+            image: "round1.png", // 일반 라운드용 이미지 예시 경로
+            choices: [
+                { text: "A. 이웃과 사이좋게 지내며 평화로운 마을을 꿈꾸는 아이 (+평화 2)", effect: { peace: 2 }, nextId: "r2" },
+                { text: "B. 숲속의 동물과 꽃들을 관찰하기 좋아하는 호기심 많은 아이 (+생태 2)", effect: { eco: 2 }, nextId: "r2" },
+                { text: "C. 단절된 길을 이어 새로운 물건을 나누고 싶은 아이 (+경제 2)", effect: { economy: 2 }, nextId: "r2" }
+            ]
+        },
+        "r2": {
+            title: "라운드 2. [1960년대] 새로운 일상",
+            text: "비무장지대 인근에는 허가받은 주민만 들어갈 수 있는 통제 구역이 생겼습니다. 이곳에 들어가기 위해서는 모두가 약속된 규칙을 지켜야 합니다.",
+            knowledge: "접경지역은 주민들의 안전과 평화를 지키기 위해 출입 시간이 정해져 있으며, 정해진 경로로만 이동해야 하는 규칙이 있습니다.",
+            image: "round2.png",
+            choices: [
+                { text: "A. 통제 구역에서 일하는 사람들에게 따뜻한 옥수수를 쪄서 나누어준다. (+평화 2)", effect: { peace: 2 }, nextId: "r3" },
+                { text: "B. 주변의 쓰레기를 줍고 야생화가 다치지 않게 조심조심 길을 걷는다. (+생태 2)", effect: { eco: 2 }, nextId: "r3" },
+                { text: "C. 주민들의 불편을 덜어주기 위해 더 편리한 서류 발급 방법을 건의한다. (+경제 2)", effect: { economy: 2 }, nextId: "r3" }
+            ]
+        },
+        "r3": {
+            title: "라운드 3. [1970년대] 거대한 분기점, 나의 꿈",
+            text: "청년이 된 당신, 더 나은 한반도를 만들기 위해 어떤 분야의 전문가로 성장하고 싶습니까? 이 선택이 당신의 미래를 결정합니다.",
+            knowledge: "1970년대부터 사람들은 끊어진 한반도를 잇기 위해 대화, 경제 협력, 환경 보호 등 다양한 분야에서 노력을 시작했습니다.",
+            image: "round3.png",
+            choices: [
+                { text: "A. 인도주의적 지원과 대화로 갈등을 해결하는 [평화 활동가]가 되겠다. ➡️ (평화 루트)", effect: { peace: 2 }, nextId: "peace_4", route: "peace" },
+                { text: "B. 남북을 잇는 길을 열어 함께 잘사는 [경제 교류 전문가]가 되겠다. ➡️ (경제 루트)", effect: { economy: 2 }, nextId: "econ_4", route: "econ" },
+                { text: "C. DMZ의 아름다운 동식물을 지키는 [생태 환경 연구원]이 되겠다. ➡️ (생태 루트)", effect: { eco: 2 }, nextId: "eco_4", route: "eco" }
+            ]
+        },
+
+        // --- 평화 루트 ---
+        "peace_4": {
+            title: "라운드 4. [1970년대] 적십자회담과 첫 대화",
+            text: "분단 이후 처음으로 이산가족을 찾기 위한 남북적십자회담이 열렸습니다. 당신은 평화 활동가로서 회담을 돕게 되었습니다.",
+            knowledge: "1971년 남북적십자회담은 굳게 닫혔던 대화의 문을 연 역사적인 첫걸음이었습니다. 이산가족의 아픔을 달래기 위한 인도주의적 만남이었습니다.",
+            image: "peace/round4.png",
+            choices: [
+                { text: "A. 이산가족들이 고향의 소식을 들을 수 있도록 편지 교환 창구를 가장 먼저 제안한다. (+평화 2)", effect: { peace: 2 }, nextId: "peace_5" },
+                { text: "B. 회담이 부드럽게 진행되도록 남과 북의 대표들이 함께 즐길 수 있는 다과회를 준비한다. (+평화 1, 경제 1)", effect: { peace: 1, economy: 1 }, nextId: "peace_5" },
+                { text: "C. 고향 산천을 그리워하는 분들을 위해 DMZ의 아름다운 사계절을 담은 사진전을 연다. (+평화 1, 생태 1)", effect: { peace: 1, eco: 1 }, nextId: "peace_5" }
+            ]
+        },
+        "peace_5": {
+            title: "라운드 5. [1980년대] 평화 교육의 시작",
+            text: "어린이들에게 통일과 평화의 소중함을 가르치기 위해 교과서에 실릴 새로운 평화 교육 프로그램을 기획해야 합니다.",
+            knowledge: "진정한 평화는 다음 세대인 어린이들이 서로를 이해하고 배려하는 마음을 배울 때 비로소 완성될 수 있습니다.",
+            image: "peace/round5.png",
+            choices: [
+                { text: "A. 미움과 갈등 대신 서로를 존중하고 용서하는 마음을 배우는 짝꿍 이해하기 수업을 만든다. (+평화 3)", effect: { peace: 3 }, nextId: "peace_6" },
+                { text: "B. 남과 북의 아이들이 나중에 커서 함께 어떤 물건을 발명할지 상상해보는 미래 수업을 만든다. (+평화 1, 경제 2)", effect: { peace: 1, economy: 2 }, nextId: "peace_6" },
+                { text: "C. 비무장지대에 살고 있는 동물 친구들의 입장에서 평화의 숲을 그려보는 미술 수업을 만든다. (+평화 1, 생태 2)", effect: { peace: 1, eco: 2 }, nextId: "peace_6" }
+            ]
+        },
+        "peace_6": {
+            title: "라운드 6. [1990년대] 임진각 평화 축제",
+            text: "파주 임진각에서 전 세계 사람들이 모여 한반도의 평화를 기원하는 큰 축제가 열립니다. 당신이 기획할 메인 행사는 무엇인가요?",
+            knowledge: "파주 임진각은 실향민들의 아픔을 달래는 곳이자, 오늘날에는 전 세계인이 평화를 노래하는 희망의 공간으로 바뀌었습니다.",
+            image: "peace/round6.png",
+            choices: [
+                { text: "A. 수만 명의 사람들이 손에 손을 잡고 끊어진 다리를 향해 평화의 노래를 부르는 대합창. (+평화 3)", effect: { peace: 3 }, nextId: "peace_7" },
+                { text: "B. 접경지역 주민들이 정성껏 기른 평화의 농산물을 판매하여 어려운 이웃을 돕는 나눔 장터. (+평화 1, 경제 2)", effect: { peace: 1, economy: 2 }, nextId: "peace_7" },
+                { text: "C. 철조망에 소원을 적은 예쁜 나비 리본을 달아, 나비처럼 자유롭게 날아가기를 기원하는 행사. (+평화 2, 생태 1)", effect: { peace: 2, eco: 1 }, nextId: "peace_7" }
+            ]
+        },
+        "peace_7": {
+            title: "라운드 7. [2000년대] 남북 공동 응원단",
+            text: "국제 스포츠 대회에서 남과 북이 하나의 팀(코리아)으로 입장하기로 했습니다. 당신은 공동 응원단을 이끄는 단장이 되었습니다.",
+            knowledge: "2000년 시드니 올림픽 등에서 남북 선수단이 한반도기를 들고 공동 입장한 것은 전 세계에 큰 감동을 주었습니다.",
+            image: "peace/round7.png",
+            choices: [
+                { text: "A. 남과 북의 응원 단원들이 서로 섞어 앉아 어깨동무를 하고 한마음으로 응원하게 한다. (+평화 3)", effect: { peace: 3 }, nextId: "peace_8" },
+                { text: "B. 응원 도구로 재활용 종이와 친환경 소재를 사용하여 세계에 깨끗한 평화의 이미지를 알린다. (+평화 1, 생태 2)", effect: { peace: 1, eco: 2 }, nextId: "peace_8" },
+                { text: "C. 남북이 함께 디자인한 아름다운 한반도기 티셔츠를 전 세계 관람객에게 판매하여 기부한다. (+평화 1, 경제 2)", effect: { peace: 1, economy: 2 }, nextId: "peace_8" }
+            ]
+        },
+        "peace_8": {
+            title: "라운드 8. [2010년대] 인도주의적 의료 지원",
+            text: "정치적 상황으로 교류가 멈추었지만, 접경지역 너머 어린이들의 건강을 위해 약품과 의료 지원이 절실하다는 소식이 들려옵니다.",
+            knowledge: "정치적, 군사적 상황과 관계없이 어린이나 아픈 사람들을 돕는 인도주의적 지원은 평화를 지키는 가장 소중한 노력입니다.",
+            image: "peace/round8.png",
+            choices: [
+                { text: "A. 국제기구(UN)와 협력하여 필수 예방 접종 백신과 어린이 영양제를 안전하게 전달한다. (+평화 3)", effect: { peace: 3 }, nextId: "peace_9" },
+                { text: "B. 약품과 함께 식수를 깨끗하게 만들어주는 간이 정수 시설을 보내 아이들의 건강을 돕는다. (+평화 2, 생태 1)", effect: { peace: 2, eco: 1 }, nextId: "peace_9" },
+                { text: "C. 겨울을 따뜻하게 보낼 수 있도록 남한의 방한복과 신발을 트럭에 가득 실어 보낸다. (+평화 2, 경제 1)", effect: { peace: 2, economy: 1 }, nextId: "peace_9" }
+            ]
+        },
+        "peace_9": {
+            title: "라운드 9. [2020년대] 디지털 평화 플랫폼",
+            text: "전 세계 어린이들이 스마트폰으로 한반도의 평화를 배우고 소통할 수 있는 훌륭한 앱을 개발하려 합니다.",
+            knowledge: "최근에는 디지털 기술을 활용하여 세계 어느 곳에서나 쉽게 평화 교육에 참여하고 의견을 나눌 수 있습니다.",
+            image: "peace/round9.png",
+            choices: [
+                { text: "A. 세계 각국의 언어로 평화 인사말을 배우고 서로 응원 메시지를 남기는 소통의 장을 만든다. (+평화 3)", effect: { peace: 3 }, nextId: "final_round" },
+                { text: "B. DMZ의 멸종위기 동물을 가상으로 키우며 자연 보호의 중요성을 깨닫는 게임을 넣는다. (+평화 1, 생태 2)", effect: { peace: 1, eco: 2 }, nextId: "final_round" },
+                { text: "C. 앱에서 모인 포인트를 실제 식량으로 바꾸어 분쟁 지역 어린이들에게 기부하는 시스템을 만든다. (+평화 2, 경제 1)", effect: { peace: 2, economy: 1 }, nextId: "final_round" }
+            ]
+        },
+
+        // --- 경제 루트 ---
+        "econ_4": {
+            title: "라운드 4. [1970년대] 끊어진 철길, 경의선을 바라보며",
+            text: "당신은 경제 물류 전문가입니다. 반세기 넘게 끊어져 있던 경의선 철도를 다시 이어보자는 꿈을 꾸게 되었습니다.",
+            knowledge: "경의선은 서울과 신의주를 이었던 철도로, 이를 복원하는 것은 남북을 잇는 경제 협력의 중요한 출발점입니다.",
+            image: "econ/round4.png",
+            choices: [
+                { text: "A. 기차가 다시 달리면 시베리아를 거쳐 유럽까지 물건을 수출할 수 있는 큰 계획을 세운다. (+경제 3)", effect: { economy: 3 }, nextId: "econ_5" },
+                { text: "B. 철도 공사 중 발생할 수 있는 자연 훼손을 막기 위해 친환경 공법을 연구한다. (+경제 1, 생태 2)", effect: { economy: 1, eco: 2 }, nextId: "econ_5" },
+                { text: "C. 철도가 이산가족이 서로 만나는 따뜻한 평화의 길이 되도록 기차역을 예쁘게 디자인한다. (+경제 1, 평화 2)", effect: { economy: 1, peace: 2 }, nextId: "econ_5" }
+            ]
+        },
+        "econ_5": {
+            title: "라운드 5. [1984년] 수해 물자 교환",
+            text: "남한에 큰 홍수 피해가 발생하자, 북측에서 쌀과 시멘트 등 구호물자를 보내겠다고 제의했습니다. 경제 실무자로서 어떻게 할까요?",
+            knowledge: "1984년 분단 이후 최초로 남북 간에 대규모 물자 교류가 이루어지며 경제적 협력의 희망을 보여준 사건입니다.",
+            image: "econ/round5.png",
+            choices: [
+                { text: "A. 이 물자들을 이재민들에게 공정하고 빠르게 전달할 수 있는 훌륭한 배분망을 짠다. (+경제 3)", effect: { economy: 3 }, nextId: "econ_6" },
+                { text: "B. 감사의 마음을 담아 남한에서 만든 훌륭한 라디오와 따뜻한 담요를 답례품으로 보낸다. (+경제 1, 평화 2)", effect: { economy: 1, peace: 2 }, nextId: "econ_6" },
+                { text: "C. 수해 복구를 위해 물자를 활용하되, 강 주변에 나무를 심어 다시는 홍수가 나지 않게 한다. (+경제 1, 생태 2)", effect: { economy: 1, eco: 2 }, nextId: "econ_6" }
+            ]
+        },
+        "econ_6": {
+            title: "라운드 6. [1998년] 소떼 방북과 협력",
+            text: "트럭에 소 500마리를 싣고 판문점을 넘어 북한으로 가는 역사적인 이벤트가 기획되었습니다. 당신은 이 행사의 총괄 매니저입니다.",
+            knowledge: "1998년 고 정주영 회장의 소떼 방북은 막혀있던 관계를 경제인의 힘으로 뚫어낸 상징적인 사건입니다.",
+            image: "econ/round6.png",
+            choices: [
+                { text: "A. 소들이 안전하고 건강하게 도착할 수 있도록 최고의 수의사들을 배치하고 경로를 점검한다. (+경제 2, 생태 1)", effect: { economy: 2, eco: 1 }, nextId: "econ_7" },
+                { text: "B. 소와 함께 우수한 농업 기술과 종자를 전달하여 옥수수밭을 풍성하게 가꾸도록 돕는다. (+경제 3)", effect: { economy: 3 }, nextId: "econ_7" },
+                { text: "C. 전 세계 기자들을 초대하여 이 감동적인 순간을 중계하고 한반도의 평화 의지를 알린다. (+경제 1, 평화 2)", effect: { economy: 1, peace: 2 }, nextId: "econ_7" }
+            ]
+        },
+        "econ_7": {
+            title: "라운드 7. [2000년대] 개성공단 입주",
+            text: "남한의 기술과 북한의 노동력이 만나는 개성공단이 열렸습니다. 당신의 공장에서는 어떤 원칙을 세우시겠습니까?",
+            knowledge: "개성공단은 남과 북의 근로자들이 매일 얼굴을 맞대고 땀 흘리며 일했던 상징적인 경제 평화 구역입니다.",
+            image: "econ/round7.png",
+            choices: [
+                { text: "A. 최고의 품질을 만들어 세계 시장에 수출하여 공단의 경제적 성공을 확실히 증명한다. (+경제 3)", effect: { economy: 3 }, nextId: "econ_8" },
+                { text: "B. 남북 근로자들이 함께 웃으며 쉴 수 있는 따뜻한 휴게실과 맛있는 식당을 먼저 만든다. (+경제 1, 평화 2)", effect: { economy: 1, peace: 2 }, nextId: "econ_8" },
+                { text: "C. 공장에서 나오는 폐수를 100% 정화하는 친환경 시설을 설치하여 자연을 철저히 보호한다. (+경제 1, 생태 2)", effect: { economy: 1, eco: 2 }, nextId: "econ_8" }
+            ]
+        },
+        "econ_8": {
+            title: "라운드 8. [2010년대] 새로운 경제의 돌파구",
+            text: "정치적 이유로 공단 운영이 어려워졌습니다. 하지만 경제 협력의 희망을 끈을 놓을 수는 없습니다. 어떤 아이디어가 있을까요?",
+            knowledge: "직접적인 공장 운영이 멈추더라도, 지식 공유나 국제 협력 등 다양한 방식으로 교류의 불씨를 살릴 수 있습니다.",
+            image: "econ/round8.png",
+            choices: [
+                { text: "A. 접경지역에서 나는 맛있는 특산물을 묶어 새로운 평화 브랜드로 외국에 수출한다. (+경제 3)", effect: { economy: 3 }, nextId: "econ_9" },
+                { text: "B. 제3국에서 남북의 기업인들이 만나 경제 발전을 논의하는 국제 평화 포럼을 개최한다. (+경제 1, 평화 2)", effect: { economy: 1, peace: 2 }, nextId: "econ_9" },
+                { text: "C. 남북이 함께 사용할 수 있는 훌륭한 친환경 태양광 발전 기술을 꾸준히 연구하고 개발한다. (+경제 1, 생태 2)", effect: { economy: 1, eco: 2 }, nextId: "econ_9" }
+            ]
+        },
+        "econ_9": {
+            title: "라운드 9. [2020년대] 평화경제특구 청사진",
+            text: "비무장지대 인근에 대규모 평화경제특구를 세우려고 합니다. 미래의 아이들을 위해 어떤 도시를 기획하시겠습니까?",
+            knowledge: "단순한 공장 단지가 아닌 4차 산업 기술, 친환경 에너지, 평화 문화가 어우러진 미래형 도시가 필요합니다.",
+            image: "econ/round9.png",
+            choices: [
+                { text: "A. 인공지능과 로봇 기술이 집약된 최첨단 IT 융합 스마트 시티를 세운다. (+경제 3)", effect: { economy: 3 }, nextId: "final_round" },
+                { text: "B. 태양광과 풍력으로만 전기를 생산하는 100% 탄소 제로의 맑은 경제 도시를 만든다. (+경제 1, 생태 2)", effect: { economy: 1, eco: 2 }, nextId: "final_round" },
+                { text: "C. 세계 각국의 청년들이 모여 자유롭게 창업하고 대화하는 글로벌 평화 벤처 타운을 조성한다. (+경제 1, 평화 2)", effect: { economy: 1, peace: 2 }, nextId: "final_round" }
+            ]
+        },
+
+        // --- 생태 루트 ---
+        "eco_4": {
+            title: "라운드 4. [1970년대] 반달가슴곰의 흔적",
+            text: "생태 연구원인 당신은 사람이 살지 않는 민통선 깊은 숲에서 가슴에 선명한 브이 무늬가 있는 반달가슴곰을 목격했습니다.",
+            knowledge: "DMZ는 사람의 발길이 닿지 않아 멸종위기 야생생물 1급인 반달가슴곰 등 귀한 동물들의 마지막 보금자리가 되었습니다.",
+            image: "eco/round4.png",
+            choices: [
+                { text: "A. 반달가슴곰이 안전하게 살아갈 수 있도록 이 숲 전체를 자연 보호 구역으로 지정해달라고 건의한다. (+생태 3)", effect: { eco: 3 }, nextId: "eco_5" },
+                { text: "B. 곰의 모습을 예쁜 그림책으로 만들어 전국 어린이들에게 자연의 소중함을 알린다. (+생태 1, 평화 2)", effect: { eco: 1, peace: 2 }, nextId: "eco_5" },
+                { text: "C. 곰을 자극하지 않고 조용히 관찰할 수 있는 우수한 무인 카메라 장비를 연구하고 개발한다. (+생태 1, 경제 2)", effect: { eco: 1, economy: 2 }, nextId: "eco_5" }
+            ]
+        },
+        "eco_5": {
+            title: "라운드 5. [1980년대] 두루미들의 겨울 식당",
+            text: "겨울이 되자 철원 평야에 천연기념물 두루미와 재두루미 떼가 날아왔습니다. 이 멋진 새들이 배불리 먹고 쉴 수 있어야 합니다.",
+            knowledge: "철원 평야 등 접경지역은 세계적인 멸종위기종인 두루미들이 겨울을 나는 전 세계에서 가장 중요한 월동지입니다.",
+            image: "eco/round5.png",
+            choices: [
+                { text: "A. 농부 아저씨들에게 부탁하여 추수 후 논에 볏짚과 볍씨를 남겨두어 두루미의 식당을 만들어준다. (+생태 2, 경제 1)", effect: { eco: 2, economy: 1 }, nextId: "eco_6" },
+                { text: "B. 멀리서 쌍안경으로 새를 관찰하는 생태 탐조대를 세워 마을의 훌륭한 수입원으로 만든다. (+생태 1, 경제 2)", effect: { eco: 1, economy: 2 }, nextId: "eco_6" },
+                { text: "C. 우아하게 날아오르는 두루미 떼를 한반도 평화의 상징으로 삼아 멋진 사진 공모전을 연다. (+생태 1, 평화 2)", effect: { eco: 1, peace: 2 }, nextId: "eco_6" }
+            ]
+        },
+        "eco_6": {
+            title: "라운드 6. [1990년대] 산양과 수달의 놀이터",
+            text: "DMZ 맑은 계곡에서는 천연기념물 수달이 헤엄치고, 가파른 암벽에는 멸종위기종 산양이 씩씩하게 뛰어다닙니다.",
+            knowledge: "군사분계선을 가로지르는 깨끗한 물줄기와 암벽은 멸종위기에 처한 수달과 산양에게 가장 완벽하고 안전한 놀이터입니다.",
+            image: "eco/round6.png",
+            choices: [
+                { text: "A. 수달과 산양의 이동 통로가 끊기지 않도록 생태 통로를 꼼꼼하게 조사하고 연결해준다. (+생태 3)", effect: { eco: 3 }, nextId: "eco_7" },
+                { text: "B. 다친 야생동물들을 치료하고 자연으로 돌려보내는 최고 시설의 야생동물 구조 센터를 짓는다. (+생태 2, 경제 1)", effect: { eco: 2, economy: 1 }, nextId: "eco_7" },
+                { text: "C. 귀여운 수달과 산양 캐릭터를 만들어 어린이들에게 생명 존중과 평화의 마음을 가르친다. (+생태 1, 평화 2)", effect: { eco: 1, peace: 2 }, nextId: "eco_7" }
+            ]
+        },
+        "eco_7": {
+            title: "라운드 7. [2000년대] 숲을 살리는 마음",
+            text: "소나무를 아프게 하는 병해충이 번지고 있습니다. 병해충과 모기 같은 곤충들은 남북의 경계선을 자유롭게 넘어 다닙니다.",
+            knowledge: "자연에는 국경이 없으므로, 숲을 건강하게 가꾸고 말라리아 같은 질병을 막는 공동 방역은 매우 훌륭한 교류 활동입니다.",
+            image: "eco/round7.png",
+            choices: [
+                { text: "A. 독한 약을 쓰지 않고 숲 스스로 이겨낼 수 있는 건강하고 친환경적인 방역 방법을 쓴다. (+생태 3)", effect: { eco: 3 }, nextId: "eco_8" },
+                { text: "B. 숲을 살리는 것이 평화의 시작임을 알리며 남북이 함께 방역 약품을 나누는 사업을 추진한다. (+생태 1, 평화 2)", effect: { eco: 1, peace: 2 }, nextId: "eco_8" },
+                { text: "C. 숲을 보호하면서도 지역 주민들이 잣과 버섯 등을 안전하게 캘 수 있는 길을 찾아준다. (+생태 1, 경제 2)", effect: { eco: 1, economy: 2 }, nextId: "eco_8" }
+            ]
+        },
+        "eco_8": {
+            title: "라운드 8. [2010년대] 보랏빛 금강초롱꽃",
+            text: "당신은 DMZ 안에서만 특별하게 피어나는 예쁜 보랏빛 금강초롱꽃과 희귀 식물 군락지를 발견했습니다.",
+            knowledge: "DMZ는 60년 넘게 보존된 식물들의 보물창고로, 우리 땅에서만 자라는 고유종들이 가득 피어나는 아름다운 화원입니다.",
+            image: "eco/round8.png",
+            choices: [
+                { text: "A. 희귀 식물들의 씨앗을 조심스럽게 모아 종자 은행에 영구적으로 안전하게 보관한다. (+생태 3)", effect: { eco: 3 }, nextId: "eco_9" },
+                { text: "B. 예쁜 꽃씨를 담은 평화의 화분을 만들어 전 세계 어린이들에게 선물하며 평화를 알린다. (+생태 1, 평화 2)", effect: { eco: 1, peace: 2 }, nextId: "eco_9" },
+                { text: "C. 식물들이 다치지 않게 나무 데크를 띄워서 만든 친환경 식물 관찰로를 세워 관광객을 맞이한다. (+생태 1, 경제 2)", effect: { eco: 1, economy: 2 }, nextId: "eco_9" }
+            ]
+        },
+        "eco_9": {
+            title: "라운드 9. [2020년대] 생물권 보전 지역",
+            text: "DMZ 인근의 아름다운 숲과 강을 국제적으로 보호받기 위해 유네스코(UNESCO) 생물권 보전 지역으로 지정하려고 합니다.",
+            knowledge: "유네스코 생물권 보전 지역은 생물 다양성 보전과 지역 주민들의 행복한 삶이 조화롭게 이루어지는 멋진 지역을 말합니다.",
+            image: "eco/round9.png",
+            choices: [
+                { text: "A. 자연을 사랑하는 지역 주민들이 중심이 되어 전통 방식으로 강과 숲을 가꾸는 훌륭한 모델을 만든다. (+생태 3)", effect: { eco: 3 }, nextId: "final_round" },
+                { text: "B. 맑은 자연 속에서 세계의 청년들이 모여 평화를 토론하는 국제 생태 평화 캠프를 연다. (+생태 1, 평화 2)", effect: { eco: 1, peace: 2 }, nextId: "final_round" },
+                { text: "C. 깨끗한 흙에서 자란 유기농 농산물에 맑은 DMZ 상표를 붙여 비싼 값에 전 세계로 수출한다. (+생태 1, 경제 2)", effect: { eco: 1, economy: 2 }, nextId: "final_round" }
+            ]
+        },
+
+        // --- 공통 최종 라운드 ---
+        "final_round": {
+            title: "최종 라운드 10. 미래를 향한 나의 마스터플랜",
+            text: "마침내 긴 세월의 단절을 넘어 따뜻한 교류의 시대가 열렸습니다. 훌륭한 전문가로 성장해 온 당신, 248km DMZ 공간을 위한 최종 청사진은 무엇입니까?",
+            knowledge: "DMZ의 미래는 평화, 생태, 경제 중 어떤 가치를 중요하게 생각하느냐에 따라 다양하고 아름다운 모습으로 그려질 수 있습니다.",
+            image: "round10.png",
+            choices: [
+                { text: "A. [생태 절대 보존] 곰과 두루미가 뛰노는 지구상 마지막 생물 다양성의 보고로 영구히 지킨다. (+생태 3)", effect: { eco: 3 }, nextId: "ending" },
+                { text: "B. [평화 경제 허브] 아시아와 유럽을 잇는 활기차고 풍요로운 친환경 스마트 물류 도시를 건설한다. (+경제 3)", effect: { economy: 3 }, nextId: "ending" },
+                { text: "C. [세계 평화의 숲] 전 세계 어린이들이 손을 잡고 걷는 가장 크고 아름다운 세계 평화 대공원을 만든다. (+평화 3)", effect: { peace: 3 }, nextId: "ending" }
+            ]
+        }
+    };
+
+    function updateUI() {
+        document.getElementById("stat-peace").innerText = stats.peace;
+        document.getElementById("stat-eco").innerText = stats.eco;
+        document.getElementById("stat-economy").innerText = stats.economy;
+
+        if (currentRoundId === "ending") {
+            calculateFinalEnding();
+            return;
+        }
+
+        const roundData = storyData[currentRoundId];
+        document.getElementById("progress").innerText = "진행 라운드: " + turnCount + " / " + maxTurns;
+        document.getElementById("story-title").innerText = roundData.title;
+        document.getElementById("story-text").innerText = roundData.text;
+
+        // 이미지 표시 논리
+        const imgElement = document.getElementById("game-image");
+        if (roundData.image) {
+            imgElement.src = roundData.image;
+            imgElement.classList.remove("hidden");
+        } else {
+            imgElement.classList.add("hidden");
+        }
+
+        const kb = document.getElementById("knowledge-box");
+        kb.innerText = "💡 지식 더하기: " + roundData.knowledge;
+        kb.classList.remove("hidden");
+
+        const choicesContainer = document.getElementById("choices-container");
+        choicesContainer.innerHTML = ""; 
+
+        roundData.choices.forEach(function(choice) {
+            const btn = document.createElement("button");
+            btn.className = "choice-btn";
+            btn.innerText = choice.text;
+            btn.onclick = function() { 
+                if (choice.route) {
+                    chosenRoute = choice.route;
+                }
+                selectChoice(choice.effect, choice.nextId); 
+            };
+            choicesContainer.appendChild(btn);
+        });
+    }
+
+    function selectChoice(effect, nextId) {
+        if (effect.peace) stats.peace += effect.peace;
+        if (effect.eco) stats.eco += effect.eco;
+        if (effect.economy) stats.economy += effect.economy;
+        
+        turnCount++;
+        currentRoundId = nextId;
+        updateUI();
+    }
+
+    function calculateFinalEnding() {
+        let endingTitle = "";
+        let endingText = "";
+        let endingImg = ""; // 엔딩별 이미지 경로 변수
+
+        let minStat = Math.min(stats.peace, stats.eco, stats.economy);
+
+        if (minStat >= 5) {
+            endingTitle = "엔딩 10. 🏆 세계를 감동시킨 노벨평화상 수상자 (히든 엔딩)";
+            endingText = "평화를 사랑하는 마음, 자연을 아끼는 마음, 함께 잘살고자 하는 지혜를 완벽하게 조율해 낸 당신! 훌륭한 리더십 덕분에 DMZ는 세계 최고의 평화 상징이 되었고, 영광스러운 노벨평화상을 수상합니다.";
+            endingImg = "ending/ending10.png"; // 노벨평화상 엔딩 이미지 매칭
+        } 
+        else if (chosenRoute === "peace") {
+            if (stats.peace >= 12) {
+                endingTitle = "엔딩 1. 🕊️ UN 한반도 평화 특별대사";
+                endingText = "모두가 서로를 이해하고 용서할 수 있도록 끊임없이 노력한 결과, UN 특별대사로 임명되었습니다. 당신의 따뜻한 외교력은 전 세계 분쟁 지역 어린이들에게 큰 희망이 됩니다.";
+                endingImg = "ending/ending1.png";
+            } else if (stats.economy >= stats.eco) {
+                endingTitle = "엔딩 2. 🤝 글로벌 평화 구호 재단 이사장";
+                endingText = "어려운 이웃을 돕는 따뜻한 인도주의적 활동과 경제적 지원을 아끼지 않았습니다. 이념을 넘어 사람을 먼저 생각한 당신의 따뜻한 마음이 수많은 생명을 살리는 기적을 만들었습니다.";
+                endingImg = "ending/ending2.png";
+            } else {
+                endingTitle = "엔딩 3. 🌻 대성동 평화의 마을 촌장";
+                endingText = "어느 한쪽에 치우치지 않고 이웃과 사이좋게 지내며 마을의 일상을 성실하게 지켜왔습니다. 매일매일 웃으며 인사하고 평화롭게 살아가는 평범한 일상이 곧 평화의 시작임을 몸소 보여줍니다.";
+                endingImg = "ending/ending3.png";
+            }
+        } 
+        else if (chosenRoute === "econ") {
+            if (stats.economy >= 12) {
+                endingTitle = "엔딩 4. 🏙️ 한반도 미래 스마트 시티 총괄 시장";
+                endingText = "모두가 풍요롭고 편리하게 살아갈 수 있는 최첨단 스마트 경제 특구를 멋지게 설계했습니다. 훌륭한 기술력으로 단절의 장벽을 시원하게 허물고 아시아의 중심을 만들었습니다.";
+                endingImg = "ending/ending4.png";
+            } else if (stats.peace >= stats.eco) {
+                endingTitle = "엔딩 5. 🚆 유라시아 횡단열차 1호 기관장";
+                endingText = "오랜 시간 끊어져 있던 기찻길이 마침내 열렸습니다. 당신은 남북을 거쳐 넓은 유럽 대륙까지 사람들의 반가운 인사와 물건을 싣고 달리는 평화 열차의 첫 주인공이 되었습니다.";
+                endingImg = "ending/ending5.png";
+            } else {
+                endingTitle = "엔딩 6. 💼 친환경 남북 무역 회사 CEO";
+                endingText = "자연을 훼손하지 않으면서도 지역 주민들이 함께 부자가 될 수 있는 훌륭한 친환경 제품을 개발했습니다. 경제 성장과 자연 보호 두 마리 토끼를 잡은 존경받는 기업인이 되었습니다.";
+                endingImg = "ending/ending6.png";
+            }
+        } 
+        else if (chosenRoute === "eco") {
+            if (stats.eco >= 12) {
+                endingTitle = "엔딩 7. 🌿 세계자연보전연맹(IUCN) 최고 위원장";
+                endingText = "당신의 헌신으로 DMZ는 곰과 두루미가 안전하게 뛰노는 생태 구역으로 영구 지정되었습니다. 전 세계 생태학자들이 한반도의 경이로운 자연을 배우기 위해 앞다투어 찾아옵니다.";
+                endingImg = "ending/ending7.png";
+            } else if (stats.economy >= stats.peace) {
+                endingTitle = "엔딩 8. 📸 글로벌 DMZ 생태 관광 센터장";
+                endingText = "자연을 훼손하지 않으면서도 전 세계인들이 DMZ의 아름다움을 흠뻑 느낄 수 있는 멋진 생태 탐방 코스를 만들었습니다. 훌륭한 관광 프로그램으로 마을 주민들에게도 큰 행복을 주었습니다.";
+                endingImg = "ending/ending8.png";
+            } else {
+                endingTitle = "엔딩 9. 🦌 국가 지정 야생동물 특별 구조대장";
+                endingText = "다친 야생동물들을 치료하고 따뜻하게 돌보아 자연으로 돌려보내는 훌륭한 시스템을 구축했습니다. 사람과 동물이 조화롭게 살아가는 방법을 제시한 멋진 환경 선생님으로 역사에 남습니다.";
+                endingImg = "ending/ending9.png";
+            }
+        }
+
+        showEnding(endingTitle, endingText, endingImg);
+    }
+
+    function showEnding(title, text, imageSrc) {
+        document.getElementById("progress").innerText = "게임 종료 - 결과 창";
+        document.getElementById("story-title").innerText = title;
+
+        // 엔딩 화면 이미지 출력 논리
+        const imgElement = document.getElementById("game-image");
+        if (imageSrc) {
+            imgElement.src = imageSrc;
+            imgElement.classList.remove("hidden");
+        } else {
+            imgElement.classList.add("hidden");
+        }
+        
+        let finalAnalysis = "<br><br>[최종 나의 성향 분석]<br>";
+        finalAnalysis += "🕊️ 평화 기여도: " + stats.peace + " | 🌿 생태 보존: " + stats.eco + " | 💰 경제 가치: " + stats.economy;
+        document.getElementById("story-text").innerHTML = text + finalAnalysis;
+
+        document.getElementById("knowledge-box").classList.add("hidden");
+        document.getElementById("choices-container").innerHTML = 
+            "<button class=\"choice-btn ending-btn\" onclick=\"location.reload()\">🎮 다시 플레이하기</button>";
+    }
+
+    updateUI();
+</script>
+
+</body>
+</html>
